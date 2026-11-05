@@ -101,7 +101,7 @@ public class ClientRequestRepository {
                 timestampdiff(MINUTE, CR.updated_at, NOW()) AS time_difference,
                 JSON_OBJECT(
                     "name", U.name,
-                    "lastname", U.last_name,
+                    "last_name", U.last_name,
                     "phone", U.phone,
                     "image", U.image
                 ) AS client
@@ -142,11 +142,11 @@ public class ClientRequestRepository {
                 response.setDestinationPosition(destinationPosition);
                 return response;
             } catch (JsonProcessingException e) {
-                throw new RuntimeException("Error al desserializar JSON NearbyClientRequestResponse: ",e);
+                throw new RuntimeException("Error al deserializar JSON NearbyClientRequestResponse: ",e);
             }
 
         });
-        if(!data.isEmpty()) {
+        /*if(!data.isEmpty()) {
             try {
                 String origins = driverLat + "," + driverLng;
                 String destinations = data.stream()
@@ -189,7 +189,65 @@ public class ClientRequestRepository {
                     data.get(i).setGoogleDistanceMatrix(googleDTO);
                 }
             } catch (Exception e) {
-                throw new RuntimeException("Error al obtener datos del API Google Distance Matrix");
+                throw new RuntimeException("Error al obtener datos del API Google Distance Matrix: " + e.getMessage());
+            }
+        }*/
+        if(!data.isEmpty()) {
+            try {
+                String origins = driverLat + "," + driverLng;
+                String destinations = data.stream()
+                        .map(d -> d.getPickupPosition().getY() + "," + d.getPickupPosition().getX())
+                        .collect(Collectors.joining("|"));
+
+                // 1. Construimos la URL como String plano idéntico al navegador
+                String urlString = String.format(
+                        "https://maps.googleapis.com/maps/api/distancematrix/json?origins=%s&destinations=%s&units=metric&mode=driving&key=%s",
+                        origins, destinations, googleApiKey
+                );
+
+                RestTemplate restTemplate = new RestTemplate();
+
+                // 2. Consumimos pasándole el String directo (RestTemplate se encarga de la codificación segura interna)
+                ResponseEntity<String> responseEntity = restTemplate.getForEntity(urlString, String.class);
+
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode rootNode = mapper.readTree(responseEntity.getBody());
+
+                // 3. Validación de seguridad en caso de que Google retorne denegación
+                if (rootNode.has("status") && "REQUEST_DENIED".equals(rootNode.get("status").asText())) {
+                    throw new RuntimeException("Google Maps denegó el acceso: " + rootNode.get("error_message").asText());
+                }
+
+                JsonNode rows = rootNode.get("rows");
+                if (rows == null || rows.size() == 0) {
+                    throw new RuntimeException("No se encontraron rutas devueltas por Google.");
+                }
+
+                JsonNode elements = rows.get(0).get("elements");
+
+                for(int i = 0; i < data.size(); i++) {
+                    JsonNode element = elements.get(i);
+                    NearbyClientRequestResponse.GoogleDistanceMatrixDTO googleDTO = new NearbyClientRequestResponse.GoogleDistanceMatrixDTO();
+                    googleDTO.setStatus(element.get("status").asText());
+
+                    if (element.has("distance") && !element.get("distance").isNull()) {
+                        googleDTO.setDistance(new NearbyClientRequestResponse.GoogleDistanceMatrixDTO.ValueText(
+                                element.get("distance").get("text").asText(),
+                                element.get("distance").get("value").asDouble()
+                        ));
+                    }
+
+                    if (element.has("duration") && !element.get("duration").isNull()) {
+                        googleDTO.setDuration(new NearbyClientRequestResponse.GoogleDistanceMatrixDTO.ValueText(
+                                element.get("duration").get("text").asText(),
+                                element.get("duration").get("value").asDouble()
+                        ));
+                    }
+
+                    data.get(i).setGoogleDistanceMatrix(googleDTO);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Error al obtener datos del API Google Distance Matrix: " + e.getMessage(), e);
             }
         }
         return data;

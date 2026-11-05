@@ -127,7 +127,6 @@ public class ClientRequestService {
     }
 
     public List<NearbyClientRequestResponse> findNearbyClientRequest(double driverLat, double driverLng) {
-        //return clientRequestRepository.findNearbyClientRequest(driverLat, driverLng);
-        return null;
+        return clientRequestRepository.findNearbyClientRequest(driverLat, driverLng);
     }
 }
