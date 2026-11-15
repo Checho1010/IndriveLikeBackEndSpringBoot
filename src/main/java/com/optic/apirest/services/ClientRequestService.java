@@ -15,6 +15,8 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -121,8 +123,14 @@ public class ClientRequestService {
         responseDTO.setDistance(distance); // ¡Guardamos en el DTO!
 
         //responseDTO.setRecommendedValue(String.format("%.2f", recommendedValue));// %.2f formatea a 2 decimales
-        responseDTO.setRecommendedValue(recommendedValue);
 
+        BigDecimal tarifaRedondeada = BigDecimal.valueOf(recommendedValue)
+                .setScale(2, RoundingMode.HALF_UP);
+        //double recommendedFare = tarifaRedondeada.doubleValue(); // Devuelve 7.14 limpio en el JSON
+        responseDTO.setRecommendedValue(tarifaRedondeada.doubleValue());
+
+        System.out.println("ClientRequestService.getTimeAndDistance responseDTO.getDestinationAddresses()" + responseDTO.getDestinationAddresses());
+        System.out.println("ClientRequestService.getTimeAndDistance responseDTO.getOriginAddresses()" + responseDTO.getOriginAddresses());
         return responseDTO;
     }
 
