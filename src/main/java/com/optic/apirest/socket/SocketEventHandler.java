@@ -1,10 +1,7 @@
 package com.optic.apirest.socket;
 
 import com.corundumstudio.socketio.SocketIOServer;
-import com.optic.apirest.dto.socket.DriverPositionDTO;
-import com.optic.apirest.dto.socket.MessageDTO;
-import com.optic.apirest.dto.socket.NewClientRequestDTO;
-import com.optic.apirest.dto.socket.SocketIdResponse;
+import com.optic.apirest.dto.socket.*;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -43,10 +40,20 @@ public class SocketEventHandler {
             newClientRequestDTO.setIdClientRequest(data.getIdClientRequest());
             newClientRequestDTO.setIdSocket(client.getSessionId().toString());
 
-            // el vento que vamos a crear se llama created_client_request
+            // el evento que vamos a crear se llama created_client_request
             // y pasamos la informacion que viene en newClientRequestDTO
             server.getBroadcastOperations().sendEvent("created_client_request", newClientRequestDTO);
+        });
 
+        server.addEventListener("new_driver_offer", NewDriverOfferDTO.class, (client, data, ackSender) -> {
+
+            NewDriverOfferDTO newDriverOfferDTO = new NewDriverOfferDTO();
+            newDriverOfferDTO.setIdClientRequest(data.getIdClientRequest());
+            newDriverOfferDTO.setIdSocket(client.getSessionId().toString());
+
+            // concatenamos el idClientRequest, para luego saber a cual solicitud de viaje el conductor esta enviando
+            // la tarifa
+            server.getBroadcastOperations().sendEvent("created_driver_offer/" + data.getIdClientRequest(), newDriverOfferDTO);
         });
     }
 }
