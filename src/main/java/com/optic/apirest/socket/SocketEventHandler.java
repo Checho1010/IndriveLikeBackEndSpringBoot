@@ -3,6 +3,7 @@ package com.optic.apirest.socket;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.optic.apirest.dto.socket.DriverPositionDTO;
 import com.optic.apirest.dto.socket.MessageDTO;
+import com.optic.apirest.dto.socket.NewClientRequestDTO;
 import com.optic.apirest.dto.socket.SocketIdResponse;
 import org.springframework.stereotype.Component;
 
@@ -34,6 +35,18 @@ public class SocketEventHandler {
             position.setLng(data.getLng());
 
             server.getBroadcastOperations().sendEvent("new_driver_position", position);
+        });
+
+        server.addEventListener("new_client_request", NewClientRequestDTO.class, (client, data, ackSender) -> {
+
+            NewClientRequestDTO newClientRequestDTO = new NewClientRequestDTO();
+            newClientRequestDTO.setIdClientRequest(data.getIdClientRequest());
+            newClientRequestDTO.setIdSocket(client.getSessionId().toString());
+
+            // el vento que vamos a crear se llama created_client_request
+            // y pasamos la informacion que viene en newClientRequestDTO
+            server.getBroadcastOperations().sendEvent("created_client_request", newClientRequestDTO);
+
         });
     }
 }
